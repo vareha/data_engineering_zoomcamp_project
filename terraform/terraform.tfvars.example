@@ -1,0 +1,15 @@
+# AIS Data Engineering Pipeline - Terraform Variables Example
+# Copy this file to terraform.tfvars and update the values
+
+# Required variables
+project_id = "your-gcp-project-id"  # Your GCP project ID
+
+# Optional variables (defaults provided, update as needed)
+region = "us-central1"              # GCP region for resource deployment
+bucket_name = "ais-data-lake"       # Will be combined with project_id to create unique bucket name
+environment = "dev"                 # Environment: dev, staging, or prod
+
+# Data lifecycle settings
+bucket_retention_days = 365         # Days to retain data in GCS
+force_destroy_bucket = false        # Whether to force destroy bucket with contents
+force_destroy_datasets = false      # Whether to force destroy datasets with tables

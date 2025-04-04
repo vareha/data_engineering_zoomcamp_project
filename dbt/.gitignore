@@ -1,0 +1,28 @@
+# dbt specific ignores
+target/
+dbt_packages/
+logs/
+.user.yml
+
+# Ignore profiles.yml as it may contain sensitive information
+# If needed, use profiles.yml.example instead
+profiles.yml
+
+# Ignore compiled SQL files
+/compiled/
+/run/
+
+# Generated documentation
+/docs/
+/catalogue.json
+manifest.json
+
+# Ignore user or env specific settings
+/profiles/*.yml
+!profiles/profiles.yml.example
+
+# macOS
+.DS_Store
+
+# Avoid committing local test data
+/data/

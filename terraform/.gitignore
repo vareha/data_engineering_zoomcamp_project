@@ -1,0 +1,28 @@
+# Terraform specific ignores
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+tfplan
+.terragrunt-cache/
+.terraform.lock.hcl
+
+# Terraform variables containing sensitive data
+terraform.tfvars
+*.auto.tfvars
+
+# Crash log files
+crash.log
+crash.*.log
+
+# Override files
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Exclude .tfvars files that are meant to be shared
+!terraform.tfvars.example
+
+# Include terraform.lock.hcl if it needs to be shared for provider versions
+# !.terraform.lock.hcl
