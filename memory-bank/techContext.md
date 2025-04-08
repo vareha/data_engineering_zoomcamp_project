@@ -9,12 +9,12 @@
    - **Looker Studio**: Data visualization and dashboard creation
 
 2. **Orchestration & Workflow**
-   - **Apache Airflow**: Workflow orchestration for pipeline execution
-   - **Docker**: Containerization for local Airflow deployment
+   - **Kestra**: Workflow orchestration for pipeline execution
+   - **Docker**: Containerization for local Kestra deployment
 
 3. **Data Transformation**
    - **dbt (data build tool)**: SQL-based transformation framework
-   - **Python**: Programming language for scripting and Airflow DAGs
+   - **SQL**: Primary language for data transformations in BigQuery and dbt
 
 4. **Infrastructure Management**
    - **Terraform**: Infrastructure as Code (IaC) for GCP resource provisioning
@@ -29,23 +29,23 @@
 
 ### Local Environment Requirements
 1. **Required Software**
-   - Python 3.8+ with pip
-   - Docker and Docker Compose (for local Airflow)
+   - Docker and Docker Compose (for local Kestra)
    - Terraform CLI
    - GNU Make
    - Git
+   - Java 11+ (for Kestra server)
 
 2. **Cloud Accounts and Access**
    - GCP account with billing enabled
    - Service account with appropriate permissions:
      - Storage Admin (for GCS)
      - BigQuery Admin (for BQ datasets and jobs)
-     - Optional: Cloud Composer Admin (if using managed Airflow)
 
 3. **Configuration Files**
    - Terraform variables file (`terraform.tfvars`) with GCP project configuration
+   - Kestra environment variables file (`.env`) for configuration
    - dbt profiles for BigQuery connection
-   - Environment variables for service account authentication
+   - Service account credentials JSON
 
 ### Development Workflow
 1. **Environment Setup**
@@ -58,7 +58,7 @@
    - Run `make tf-apply` to create GCP resources
 
 3. **Local Testing**
-   - Run Airflow locally with `make airflow-up`
+   - Run Kestra locally with `make kestra-up`
    - Test dbt models with `make dbt-test`
    - Validate complete pipeline with `make pipeline`
 
@@ -96,7 +96,7 @@
    - Proper IAM configuration for resource access
 
 3. **Deployment Considerations**
-   - Local vs. Cloud Composer Airflow deployment trade-offs
+   - Local vs. cloud-hosted Kestra deployment trade-offs
    - Terraform state management and locking for team environments
 
 ## Dependencies
@@ -121,7 +121,7 @@
 2. **Version Dependencies**
    - Terraform provider versions
    - dbt package versions
-   - Python package requirements
+   - Kestra version compatibility
 
 3. **Configuration Dependencies**
    - Environment variables
@@ -141,5 +141,29 @@
 3. **BigQuery to Looker Studio**
    - Direct connection from Looker Studio to BigQuery
    - Query optimization for dashboard performance
+
+4. **Kestra to GCP Services**
+   - Direct integration with GCS for file operations
+   - Integration with BigQuery for data loading and querying
+   - Service account authentication for secure access
+
+## Data Mart Layer
+
+The project now includes an additional data mart layer specifically designed for dashboard requirements:
+
+1. **Purpose**
+   - Pre-aggregate data for dashboard performance
+   - Simplify dashboard queries
+   - Optimize for specific visualization requirements
+
+2. **Implementation**
+   - dbt models for daily and monthly aggregations
+   - Partition by date for efficient time-based filtering
+   - Materialized as BigQuery tables for direct dashboard connection
+
+3. **Dashboard Integration**
+   - Direct connection from Looker Studio to mart tables
+   - Simplified SQL queries for dashboard visualizations
+   - Improved dashboard load time and responsiveness
 
 This technical context document provides an overview of the technologies, setup requirements, constraints, and dependencies for the AIS data engineering project. It serves as a reference for understanding the technical landscape and considerations for development and deployment.

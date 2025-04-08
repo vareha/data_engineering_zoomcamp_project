@@ -11,11 +11,11 @@ flowchart TD
     DT --> CU[Curated: BigQuery]
     CU --> DB[Dashboard: Looker Studio]
     
-    AF[Airflow DAG] --> DS
-    AF --> EX
-    AF --> DL
-    AF --> ST
-    AF --> DT
+    KS[Kestra Workflow] --> DS
+    KS --> EX
+    KS --> DL
+    KS --> ST
+    KS --> DT
     
     TF[Terraform] --> GCP[GCP Resources]
     GCP --> DL
@@ -23,7 +23,7 @@ flowchart TD
     GCP --> CU
     
     MF[Makefile] --> TF
-    MF --> AF
+    MF --> KS
     MF --> DT
 ```
 
@@ -58,11 +58,12 @@ flowchart TD
   - Modular approach with staging and curated models
 
 ### 5. Orchestration
-- **Decision**: Use Airflow for pipeline orchestration
+- **Decision**: Use Kestra for pipeline orchestration
 - **Rationale**:
-  - Flexible DAG-based workflow definition
-  - Rich ecosystem of operators and hooks
-  - Strong community support and documentation
+  - Declarative YAML-based workflow definition
+  - Strong built-in integration with cloud services
+  - Simpler configuration and maintenance compared to Airflow
+  - Powerful templating and error handling capabilities
 
 ### 6. Infrastructure as Code
 - **Decision**: Use Terraform for infrastructure provisioning
@@ -89,11 +90,13 @@ flowchart TD
 - **Raw Layer**: Original files in GCS
 - **Staging Layer**: Raw data loaded into BigQuery
 - **Curated Layer**: Transformed, cleaned data ready for analysis
+- **Mart Layer**: Aggregated data optimized for specific dashboard use cases
 
 ### 3. Pipeline Orchestration
-- DAG-based task dependencies
+- Task-based workflow definition
 - Idempotent task execution
 - Clear separation of extraction, loading, and transformation tasks
+- Proper error handling and recovery mechanisms
 
 ### 4. Infrastructure as Code
 - Declarative resource definitions
@@ -117,13 +120,18 @@ flowchart TD
 - Data cleaning, normalization, and enrichment are performed
 - Partitioning and clustering optimize query performance
 
-### Curated Layer to Dashboard
-- Looker Studio connects directly to BigQuery curated tables
-- Visualizations are created based on transformed data
+### Curated to Mart Layer
+- Further aggregation and transformation for specific use cases
+- Pre-computed metrics for dashboard performance
+- Optimized for specific visualization requirements
+
+### Mart Layer to Dashboard
+- Looker Studio connects directly to BigQuery mart tables
+- Visualizations are created based on pre-aggregated data
 - Dashboard provides interactive exploration capabilities
 
 ### Orchestration and Infrastructure
-- Airflow orchestrates the entire data flow
+- Kestra orchestrates the entire data flow
 - Terraform provisions all required cloud resources
 - Makefile provides a unified interface for common tasks
 

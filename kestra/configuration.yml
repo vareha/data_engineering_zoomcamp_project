@@ -1,0 +1,40 @@
+kestra:
+  repository:
+    type: postgres
+    postgres:
+      url: jdbc:postgresql://postgres:5432/kestra
+      user: kestra
+      password: k3str4
+
+  storage:
+    type: local
+    local:
+      base-path: /tmp/kestra-storage
+
+  queue:
+    type: postgres
+    postgres:
+      url: jdbc:postgresql://postgres:5432/kestra
+      user: kestra
+      password: k3str4
+
+  jdbc:
+    url: jdbc:postgresql://postgres:5432/kestra
+    user: kestra
+    password: k3str4
+
+  server:
+    port: 8080
+    
+  # GCP specific configuration
+  google:
+    project: ${GCP_PROJECT_ID}
+    credentials-path: /app/kestra/gcp-credentials.json
+
+  # Environment variables that will be accessible in flows
+  variables:
+    gcp:
+      project-id: ${GCP_PROJECT_ID}
+      bucket-name: ${GCS_BUCKET_NAME}
+      staging-dataset: ${BQ_STAGING_DATASET}
+      raw-table-name: stg_ais_raw

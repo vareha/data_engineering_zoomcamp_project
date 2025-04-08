@@ -6,7 +6,7 @@ PROJECT_ID ?= your-gcp-project-id  # Set via command line or environment
 REGION ?= us-central1              # Default GCP region
 BUCKET_NAME ?= ais-data-lake       # GCS bucket name prefix
 
-.PHONY: all init tf-init tf-plan tf-apply airflow-up airflow-down dbt-run dbt-test pipeline clean
+.PHONY: all init tf-init tf-plan tf-apply airflow-up airflow-down kestra-up kestra-down dbt-run dbt-test pipeline clean
 
 # 'all' runs the entire pipeline end-to-end
 all: tf-apply airflow-up dbt-run
@@ -48,6 +48,18 @@ airflow-down:
 	cd airflow && docker-compose down
 	@echo "Airflow has been stopped"
 
+# Kestra targets
+kestra-up:
+	@echo "Starting Kestra with Docker Compose..."
+	cd kestra && docker-compose up -d
+	@echo "Kestra is starting up... Please wait ~1 minute for services to be ready"
+	@echo "Access the Kestra UI at http://localhost:8080"
+
+kestra-down:
+	@echo "Stopping Kestra containers..."
+	cd kestra && docker-compose down
+	@echo "Kestra has been stopped"
+
 # dbt targets
 dbt-run:
 	@echo "Running dbt models..."
@@ -63,10 +75,17 @@ pipeline: tf-apply airflow-up
 	@echo "Please trigger the 'ais_ingestion_dag' in the Airflow UI at http://localhost:8080"
 	@echo "After the DAG completes, run 'make dbt-run' to apply transformations"
 
+# Run the pipeline with Kestra
+kestra-pipeline: tf-apply kestra-up
+	@echo "Infrastructure and Kestra are ready"
+	@echo "Please trigger the 'ais_ingestion_flow' in the Kestra UI at http://localhost:8080"
+	@echo "After the flow completes, run 'make dbt-run' to apply transformations"
+
 # Clean up local environment (does not affect cloud resources)
 clean:
 	@echo "Cleaning up local environment..."
 	cd airflow && docker-compose down -v || true
+	cd kestra && docker-compose down -v || true
 	rm -rf terraform/.terraform terraform/tfplan || true
 	@echo "Local environment cleaned"
 
@@ -75,17 +94,20 @@ help:
 	@echo "AIS Data Engineering Pipeline Makefile"
 	@echo "-------------------------------------"
 	@echo "Available targets:"
-	@echo "  init          Initialize the project"
-	@echo "  tf-init       Initialize Terraform"
-	@echo "  tf-plan       Create Terraform execution plan"
-	@echo "  tf-apply      Apply Terraform changes"
-	@echo "  airflow-up    Start Airflow with Docker Compose"
-	@echo "  airflow-down  Stop Airflow containers"
-	@echo "  dbt-run       Run dbt models"
-	@echo "  dbt-test      Run dbt tests"
-	@echo "  pipeline      Run the complete pipeline"
-	@echo "  clean         Clean up local environment"
-	@echo "  help          Display this help message"
+	@echo "  init            Initialize the project"
+	@echo "  tf-init         Initialize Terraform"
+	@echo "  tf-plan         Create Terraform execution plan"
+	@echo "  tf-apply        Apply Terraform changes"
+	@echo "  airflow-up      Start Airflow with Docker Compose"
+	@echo "  airflow-down    Stop Airflow containers"
+	@echo "  kestra-up       Start Kestra with Docker Compose"
+	@echo "  kestra-down     Stop Kestra containers"
+	@echo "  dbt-run         Run dbt models"
+	@echo "  dbt-test        Run dbt tests"
+	@echo "  pipeline        Run the complete pipeline with Airflow"
+	@echo "  kestra-pipeline Run the complete pipeline with Kestra"
+	@echo "  clean           Clean up local environment"
+	@echo "  help            Display this help message"
 	@echo ""
 	@echo "Usage example:"
 	@echo "  make tf-apply PROJECT_ID=my-gcp-project REGION=us-east1"
