@@ -5,7 +5,7 @@
 
 /*
     Staging model for AIS data.
-    This model formats raw AIS data from the staging_ais_raw table
+    This model formats raw AIS data from the ais_data table
     with consistent data types and column names.
 */
 
@@ -36,7 +36,7 @@ WITH source_data AS (
         _TABLE_SUFFIX AS data_partition, -- If using partitioned tables
         CURRENT_TIMESTAMP() AS ingestion_timestamp
         
-    FROM {{ source('ais_data', 'staging_ais_raw') }}
+    FROM {{ source('ais_data', 'ais_data') }}
     -- Add any basic filtering if needed
     -- WHERE mmsi IS NOT NULL
 )
