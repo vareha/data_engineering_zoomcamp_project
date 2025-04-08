@@ -77,8 +77,10 @@ logs/
 
 # Local development
 .env
+.gitignore
 .envrc
 *.local
+.service-account.json
 ./memory-bank
 
 # Exceptions - Keep these files
