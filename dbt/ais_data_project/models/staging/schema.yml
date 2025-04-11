@@ -1,0 +1,9 @@
+version: 2
+
+sources:
+  - name: staging
+    database: de-zoomcamp-project-455806
+    schema: ais_staging
+
+    tables: 
+      - name: ais_data
