@@ -1,0 +1,76 @@
+version: 2
+
+models:
+  - name: int_ais_data
+    description: >
+      Cleaned and standardized AIS data with data quality filters and additional calculated fields.
+      This model serves as the foundation for dashboard-specific aggregation models.
+    columns:
+      - name: unique_row_id
+        description: Unique identifier for each AIS record
+        tests:
+          - unique
+          - not_null
+      
+      - name: timestamp
+        description: Timestamp of the AIS message, converted to proper TIMESTAMP format
+        tests:
+          - not_null
+      
+      - name: mmsi
+        description: Maritime Mobile Service Identity (MMSI) number as a string to preserve leading zeros
+        tests:
+          - not_null
+      
+      - name: latitude
+        description: Latitude of the vessel's position, cleaned to ensure values are within -90 to 90 degrees range
+      
+      - name: longitude
+        description: Longitude of the vessel's position, cleaned to ensure values are within -180 to 180 degrees range
+      
+      - name: navigational_status
+        description: Current navigational status of the vessel, standardized with unknowns handled
+      
+      - name: sog
+        description: Speed Over Ground in knots, nullified if negative
+      
+      - name: cog
+        description: Course Over Ground in degrees, nullified if outside 0-360 range
+      
+      - name: heading
+        description: True heading in degrees, nullified if outside 0-360 range
+      
+      - name: name
+        description: Vessel name, cleaned and standardized
+      
+      - name: ship_type
+        description: Type of ship as defined in AIS specifications
+      
+      - name: calculated_length
+        description: Calculated vessel length using either size_a + size_b or the provided length field
+      
+      - name: calculated_width
+        description: Calculated vessel width using either size_c + size_d or the provided width field
+      
+      - name: date
+        description: Extracted date from the timestamp for easier filtering
+        tests:
+          - not_null
+      
+      - name: year
+        description: Extracted year from the timestamp
+      
+      - name: month
+        description: Extracted month (1-12) from the timestamp
+      
+      - name: day
+        description: Extracted day of month from the timestamp
+      
+      - name: hour
+        description: Extracted hour of day from the timestamp
+      
+      - name: has_valid_position
+        description: Boolean flag indicating if the record has valid latitude and longitude
+      
+      - name: has_valid_mmsi
+        description: Boolean flag indicating if the record has a valid MMSI
