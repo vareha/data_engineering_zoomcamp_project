@@ -52,7 +52,6 @@ target/
 dbt_modules/
 logs/
 .user.yml
-profiles.yml
 
 # Docker
 .docker/

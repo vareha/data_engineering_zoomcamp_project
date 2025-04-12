@@ -1,0 +1,20 @@
+ais_data_project:
+  target: bigquery
+  outputs:
+    postgres:
+      dbname: dbt
+      host: localhost
+      password: pass
+      port: 5432
+      schema: dbt_project
+      threads: 4
+      type: postgres
+      user: postgres
+    bigquery:
+      dataset: ais_data
+      keyfile: ../../service-account.json
+      method: service-account
+      project: de-zoomcamp-project-455806
+      threads: 4
+      type: bigquery
+      location: europe-west4
