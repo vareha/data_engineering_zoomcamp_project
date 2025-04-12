@@ -1,201 +1,207 @@
-# Dashboard Implementation Guide
+# Looker Studio Dashboard Implementation Guide
 
-This guide provides step-by-step instructions for implementing the AIS data dashboards using dbt and Looker Studio.
+## Introduction
+This guide provides detailed instructions for implementing Looker Studio dashboards based on the dbt mart models we've created for AIS data analysis. We'll create two main visualizations:
+1. A pie chart showing daily navigational status distribution
+2. A time series visualization showing monthly navigational status trends over time
 
 ## Prerequisites
+- Access to Google Cloud Console and the BigQuery project (`de-zoomcamp-project-455806`)
+- The dbt models have been successfully run and data is available in BigQuery
+- Access to Looker Studio (looker.google.com)
 
-- GCP project with BigQuery set up
-- Service account with BigQuery access
-- Kestra workflow successfully running and loading data to BigQuery
-- dbt CLI installed locally (or dbt Cloud account configured)
-- Environment variables set for GCP access:
-  - `GCP_PROJECT_ID`
-  - `GCP_LOCATION`
-  - `GOOGLE_APPLICATION_CREDENTIALS`
+## Step 1: Access Looker Studio
 
-## Step 1: Run dbt Models
+1. Open your web browser and navigate to [Looker Studio](https://lookerstudio.google.com/)
+2. Sign in with your Google account that has access to the BigQuery project
+3. From the Looker Studio homepage, click on the "+ Create" button and select "Report"
 
-### 1.1 Install dbt Dependencies
+## Step 2: Connect to BigQuery Data Source
 
-```bash
-cd data_engineering_zoomcamp_project/dbt
-dbt deps
-```
+1. In the "Add data to report" dialog, select "BigQuery" as the connector
+2. Choose "Custom Query" option
+3. Select your project (`de-zoomcamp-project-455806`) from the dropdown
+4. You'll need to create two separate data sources for our two visualizations:
 
-### 1.2 Test dbt Connection
+### Data Source 1: Daily Navigational Status
+1. Create a custom query:
+   ```sql
+   SELECT
+     date,
+     navigational_status,
+     record_count,
+     total_daily_records,
+     percentage
+   FROM
+     `de-zoomcamp-project-455806.marts.daily_navigational_status`
+   ```
+2. Click "Run Query" to verify the data
+3. Click "Add" to add this data source to your report
+4. Rename the data source to "Daily Navigational Status"
 
-```bash
-dbt debug
-```
+### Data Source 2: Monthly Navigational Status
+1. After adding the first data source, click "Add data" from the report toolbar
+2. Follow the same steps but with this query:
+   ```sql
+   SELECT
+     month_start_date,
+     year,
+     month,
+     navigational_status,
+     record_count,
+     total_monthly_records,
+     percentage
+   FROM
+     `de-zoomcamp-project-455806.marts.monthly_navigational_status`
+   ORDER BY
+     month_start_date, navigational_status
+   ```
+3. Click "Add" to add this data source
+4. Rename the data source to "Monthly Navigational Status"
 
-Ensure that the connection to BigQuery is working properly before proceeding.
+## Step 3: Create Daily Navigational Status Pie Chart
 
-### 1.3 Run dbt Models
+1. From the report editor, click "Add a chart" from the toolbar and select "Pie chart"
+2. In the data panel on the right, ensure "Daily Navigational Status" is selected as the data source
+3. Configure the chart dimensions and metrics:
+   - Dimension: Add "navigational_status"
+   - Metric: Add "percentage"
+4. Configure style options:
+   - Chart: Set an appropriate title (e.g., "Daily Navigational Status Distribution")
+   - Slice: Enable "Show data labels" with value "Percentage"
+   - Colors: Choose a diverse color palette to distinguish different statuses
+   
+## Step 4: Add Date Filter Control for Daily Chart
 
-To run all models (staging, curated, and marts):
+1. Click "Add a control" from the toolbar and select "Date range control"
+2. Configure the control:
+   - Data source: "Daily Navigational Status"
+   - Date dimension: "date"
+   - Default date range: Set to a recent period (e.g., last 30 days)
+3. Position the control above the pie chart
+4. In the pie chart's properties, ensure it's set to be controlled by this date filter
 
-```bash
-dbt run
-```
+## Step 5: Create Monthly Navigational Status Time Series
 
-To run only the mart models for dashboards:
+1. Add a new page to your report by clicking the "+" button at the bottom of the page
+2. Click "Add a chart" and select "Time series chart"
+3. In the data panel, select "Monthly Navigational Status" as the data source
+4. Configure the chart dimensions and metrics:
+   - Dimension: Add "month_start_date"
+   - Breakdown Dimension: Add "navigational_status"
+   - Metric: Add "percentage"
+5. Configure style options:
+   - Chart: Set an appropriate title (e.g., "Monthly Navigational Status Trends")
+   - Series: Choose "Stacked column" or "Stacked area" for better visualization of distributions
+   - Colors: Use the same color palette as your pie chart for consistency
 
-```bash
-dbt run --select marts.*
-```
+## Step 6: Add Date Range Control for Monthly Chart
 
-### 1.4 Test dbt Models
+1. Click "Add a control" and select "Date range control"
+2. Configure the control:
+   - Data source: "Monthly Navigational Status"
+   - Date dimension: "month_start_date"
+   - Default date range: Set to a suitable range (e.g., last 12 months)
+3. Position the control above the time series chart
+4. Ensure the chart is set to be controlled by this date filter
 
-```bash
-dbt test
-```
+## Step 7: Add Navigational Status Filter
 
-This will run the tests defined in the schema.yml files to ensure data quality.
+1. Click "Add a control" and select "Drop-down list"
+2. Configure the control:
+   - Position it in a location accessible to both charts (perhaps in a header section)
+   - For the Daily chart page:
+     - Data source: "Daily Navigational Status"
+     - Control field: "navigational_status"
+     - Specify "Include All option"
+   - For the Monthly chart page, create a separate but similar filter:
+     - Data source: "Monthly Navigational Status"
+     - Control field: "navigational_status"
+     - Specify "Include All option"
 
-### 1.5 Generate dbt Documentation (Optional)
+## Step 8: Add Context and Documentation
 
-```bash
-dbt docs generate
-dbt docs serve
-```
+1. Click "Add a text" from the toolbar
+2. Add descriptive text to explain:
+   - What AIS data represents
+   - What navigational status indicates
+   - How to interpret the visualizations
+   - Any caveats or limitations of the data
+3. Position this text above or beside your visualizations
+4. For example:
+   ```
+   AIS Navigational Status Analysis
+   
+   This dashboard presents analysis of ship navigational status data from Automatic Identification System (AIS) transmissions.
+   
+   The pie chart shows the distribution of different navigational statuses for a specific day.
+   The time series chart shows how this distribution changes over months.
+   
+   Common navigational statuses include:
+   - Under way using engine (0)
+   - At anchor (1)
+   - Not under command (2)
+   - Restricted maneuverability (3)
+   - Constrained by draft (4)
+   - Moored (5)
+   - Aground (6)
+   - Engaged in fishing (7)
+   - Under way sailing (8)
+   ```
 
-This will create and serve interactive documentation for your dbt models.
+## Step 9: Add Summary Metrics
 
-## Step 2: Create Looker Studio Dashboards
+1. Click "Add a chart" and select "Scorecard"
+2. Create separate scorecards for:
+   - Total records in the selected period
+   - Percentage of most common navigational status
+   - Count of unique navigational statuses observed
+3. Position these scorecards in a prominent location (e.g., top of the report)
 
-### 2.1 Access Looker Studio
+## Step 10: Optimize Performance
 
-1. Go to [Looker Studio](https://lookerstudio.google.com/)
-2. Sign in with your Google account (same account with access to your GCP project)
-3. Click "Create" and select "Report"
+1. Click on "Resource" in the menu and select "Manage data source"
+2. For each data source:
+   - Click "Edit" then navigate to "Data freshness and caching"
+   - Set an appropriate cache duration (e.g., 4 hours or daily)
+3. Add default date filters to limit initial data load
+4. Consider adding filter suggestions in the text box to guide users toward efficient queries
 
-### 2.2 Connect to BigQuery Data Sources
+## Step 11: Theme and Format
 
-#### Daily Navigational Status Data Source
+1. Click on "Theme" in the menu
+2. Select a professional theme that aligns with project branding
+3. Customize colors, fonts, and borders as needed
+4. Ensure consistent formatting across all visualizations
+5. Add a header with the project name and last update date
 
-1. Select "BigQuery" as the data source type
-2. Select your GCP project
-3. Select the "marts" dataset
-4. Select the "daily_nav_status" table
-5. Click "Connect"
+## Step 12: Share and Publish
 
-#### Monthly Navigational Status Data Source
+1. Click "Share" in the top-right corner
+2. Configure sharing settings:
+   - Add specific people who need access
+   - Set appropriate permissions (view only or edit)
+   - Enable embedding if needed
+3. Consider schedule email delivery for key stakeholders
+4. Click "Publish" to make the dashboard accessible via link
 
-1. Click "Add data" in the report
-2. Select "BigQuery" as the data source type
-3. Select your GCP project
-4. Select the "marts" dataset
-5. Select the "monthly_nav_status" table
-6. Click "Connect"
+## Testing and Validation
 
-### 2.3 Create Daily Navigational Status Pie Chart
+Before finalizing the dashboard:
 
-1. Add a date range control:
-   - From the "Add a control" menu, select "Date range"
-   - Configure it to filter based on "event_date"
+1. Test all filters to ensure they work as expected
+2. Verify that data matches expected values from BigQuery
+3. Check performance with different date ranges
+4. Test on different devices and screen sizes
+5. Get feedback from potential users
 
-2. Add a pie chart:
-   - From the "Add a chart" menu, select "Pie chart"
-   - Set "Dimension" to "navigational_status"
-   - Set "Metric" to "vessel_count"
-   - Link this chart to the daily_nav_status data source
-   - Connect it to the date range control
+## Maintenance Considerations
 
-3. Format the pie chart:
-   - Add a meaningful title (e.g., "Vessel Navigational Status Distribution")
-   - Configure colors for better visualization
-   - Add data labels showing percentages
+- Monitor query performance and optimize as needed
+- Update dashboard annotations if data models change
+- Consider adding automated anomaly detection
+- Add data quality indicators if issues arise
 
-### 2.4 Create Monthly Navigational Status Visualization
+---
 
-1. Add a time series chart:
-   - From the "Add a chart" menu, select "Time series chart"
-   - Set "Time dimension" to "year_month"
-   - Set "Breakdown dimension" to "navigational_status"
-   - Set "Metric" to "vessel_count"
-   - Link this chart to the monthly_nav_status data source
-
-2. Format the time series chart:
-   - Add a meaningful title (e.g., "Monthly Navigational Status Trends")
-   - Configure colors to match the pie chart
-   - Adjust line thickness and style as needed
-   - Configure the legend position and format
-
-### 2.5 Add Dashboard Controls (Optional)
-
-1. Add a filter for movement_status:
-   - From the "Add a control" menu, select "Drop-down list"
-   - Configure it to filter based on "movement_status"
-   - Apply it to both charts
-
-2. Add a metric selector:
-   - From the "Add a control" menu, select "Drop-down list"
-   - Configure it to select between "vessel_count" and "record_count"
-   - Connect it to both charts using calculated fields
-
-### 2.6 Finalize Dashboard Layout
-
-1. Arrange charts and controls in a logical layout
-2. Add text elements for titles and explanations
-3. Add your logo and any required disclaimers
-4. Configure the theme and color scheme for consistency
-
-### 2.7 Share the Dashboard
-
-1. Click the "Share" button in the top-right corner
-2. Configure access permissions
-3. Choose whether to enable downloading or copying
-4. Share the link with stakeholders
-
-## Step 3: Schedule Regular Updates
-
-### 3.1 Set Up Regular dbt Runs
-
-To ensure your dashboard data stays current, schedule regular dbt runs after the Kestra workflow completes:
-
-1. Add a dbt run step to your Kestra workflow (recommended), or
-2. Set up a cron job to run dbt on a regular schedule, or
-3. Use dbt Cloud for scheduled runs
-
-### 3.2 Monitor Data Freshness
-
-Add a "Last Updated" timestamp to your dashboard:
-
-1. In Looker Studio, add a text element
-2. Use the "generated_at" field from your mart models
-3. Format it as "Data updated: {date time}"
-
-## Troubleshooting
-
-### Common Issues and Solutions
-
-1. **Missing data in dashboard:** 
-   - Verify that the Kestra workflow ran successfully
-   - Check dbt logs for any errors during model execution
-   - Inspect the BigQuery tables to ensure data was loaded correctly
-
-2. **Dashboard performance issues:**
-   - Check query execution time in BigQuery
-   - Consider further optimizing partitioning and clustering
-   - Reduce date ranges or add more aggregation if needed
-
-3. **Incorrect metrics:**
-   - Validate the data in BigQuery using SQL queries
-   - Ensure that the dbt transformations are working as expected
-   - Check for data quality issues in the source data
-
-For any other issues, check the dbt logs and BigQuery query history for errors.
-
-## Next Steps
-
-1. Consider implementing additional visualizations:
-   - Geographic map of vessel positions
-   - Vessel type distribution
-   - Speed analysis by navigational status
-
-2. Enhance your dashboard with advanced features:
-   - Anomaly detection indicators
-   - Trend comparison across time periods
-   - Performance metrics and KPIs
-
-3. Set up automated email reports or scheduled exports
+This implementation guide provides a comprehensive approach to creating effective Looker Studio dashboards for AIS data analysis. The resulting dashboards will enable users to explore navigational status patterns both daily (via pie chart) and over time (via time series), providing valuable insights into maritime traffic behavior.
