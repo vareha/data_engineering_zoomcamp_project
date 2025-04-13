@@ -4,7 +4,6 @@
 
 This project implements a complete data engineering pipeline for AIS (Automatic Identification System) ship tracking data. It includes data extraction, loading, transformation, and visualization components, all orchestrated through Kestra workflows.
 
-![AIS Data Pipeline](https://miro.medium.com/v2/resize:fit:1400/format:webp/1*_wX7JLOQmrpjQ5cdZ8TaMQ.png)
 
 ## Architecture
 
