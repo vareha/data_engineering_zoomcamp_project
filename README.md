@@ -1,175 +1,278 @@
-# AIS Data Engineering Pipeline
+# AIS Data Engineering Project
 
-A complete data engineering pipeline for processing AIS (Automatic Identification System) ship tracking data.
+## Overview
+
+This project implements a complete data engineering pipeline for AIS (Automatic Identification System) ship tracking data. It includes data extraction, loading, transformation, and visualization components, all orchestrated through Kestra workflows.
+
+![AIS Data Pipeline](https://miro.medium.com/v2/resize:fit:1400/format:webp/1*_wX7JLOQmrpjQ5cdZ8TaMQ.png)
 
 ## Architecture
 
-This project implements a batch data pipeline using the following components:
+The project follows a modern data engineering architecture:
+
+- **Data Source**: Monthly AIS CSV files in ZIP archives from web.ais.dk
+- **Data Lake**: Google Cloud Storage for storing raw CSV files
+- **Data Warehouse**: BigQuery for structured data storage and analysis
+- **Orchestration**: Kestra for workflow management and scheduling
+- **Transformation**: dbt for data modeling and transformation
+- **Visualization**: Both Metabase (self-hosted) and Looker Studio (cloud) for dashboards
+- **Infrastructure as Code**: Terraform for GCP resource provisioning
+
+## Directory Structure
 
 ```
-Data Source (AIS ZIP Files) → GCS → BigQuery → dbt → Looker Studio
-         ↑                     ↑       ↑        ↑
-         └─────────────────── Airflow ─────────┘
-                                ↑
-                            Terraform
-                                ↑
-                             Makefile
+data_engineering_zoomcamp_project/
+├── terraform/                 # Infrastructure as Code
+│   ├── main.tf                # Main Terraform configuration
+│   ├── variables.tf           # Variable definitions
+│   ├── outputs.tf             # Output definitions
+│   └── terraform.tfvars       # Terraform variable values
+├── kestra/                    # Kestra workflow orchestration
+│   ├── docker-compose.yml     # Kestra local setup
+│   ├── .env                   # Environment variables
+│   └── flows/                 # Kestra flow definitions
+│       ├── ais_data_extraction_and_load.yaml  # ETL flow
+│       └── ais_data_transformation.yaml       # dbt workflow
+├── dbt/                       # Data transformation models
+│   ├── models/                # dbt models
+│   │   ├── staging/          # Initial data cleaning
+│   │   ├── intermediate/     # Business logic transformations
+│   │   └── marts/            # Final presentation layer
+│   └── ais_data_project/     # dbt project configuration
+├── metabase/                  # Self-hosted Metabase
+│   ├── docker-compose.yml     # Metabase setup
+│   ├── setup_metabase.sh      # Installation script
+│   └── queries/               # Example SQL queries
+└── Makefile                   # Automation for common tasks
 ```
 
-- **Data Source**: Monthly AIS CSV files in ZIP archives
-- **Data Lake**: Google Cloud Storage (GCS)
-- **Data Warehouse**: BigQuery
-- **Orchestration**: Airflow
-- **Transformation**: dbt
-- **Visualization**: Looker Studio
-- **Infrastructure**: Terraform
-- **Automation**: Makefile
+## Prerequisites
 
-## Project Structure
-
-```
-ais-pipeline/
-├── README.md                 # This file
-├── Makefile                  # Automation for common tasks
-├── terraform/                # Infrastructure as Code
-│   ├── main.tf               # Main Terraform configuration
-│   ├── variables.tf          # Input variables
-│   ├── outputs.tf            # Output values
-│   └── terraform.tfvars      # Variable values (create from example)
-├── airflow/                  # Airflow configuration
-│   ├── dags/                 # DAG definitions
-│   │   └── ais_ingestion_dag.py  # Main pipeline DAG
-│   └── docker-compose.yml    # Local Airflow setup
-├── dbt/                      # dbt transformations
-│   ├── dbt_project.yml       # dbt project configuration
-│   ├── profiles.yml          # dbt connection profiles
-│   ├── models/               # dbt models
-│   │   ├── staging/          # Staging models
-│   │   │   └── stg_ais_raw.sql  # Raw data staging
-│   │   └── curated/          # Curated models
-│   │       └── ais_curated.sql  # Processed data
-│   └── tests/                # dbt tests
-└── .github/                  # CI/CD configuration
-    └── workflows/            # GitHub Actions workflows
-```
-
-## Getting Started
-
-### Prerequisites
-
-- Google Cloud Platform account with billing enabled
-- Python 3.8+
-- Terraform
-- Docker and Docker Compose
+- Google Cloud Platform account with a project set up
+- GCP Service Account with appropriate permissions
+- Docker and Docker Compose installed
+- Terraform installed (>= v1.0.0)
+- Git
 - Make
 
-### Setup
+## Setup Instructions
 
-1. Clone this repository:
-   ```
-   git clone https://github.com/yourusername/ais-pipeline.git
-   cd ais-pipeline
-   ```
+### 1. Clone the Repository
 
-2. Create `terraform.tfvars` from the example:
-   ```
-   cp terraform/terraform.tfvars.example terraform/terraform.tfvars
-   ```
+```bash
+git clone https://github.com/yourusername/data_engineering_zoomcamp_project.git
+cd data_engineering_zoomcamp_project
+```
 
-3. Edit `terraform.tfvars` to set your GCP project ID and other variables.
+### 2. Configure GCP Credentials
 
-4. Set up GCP credentials:
-   ```
-   export GOOGLE_APPLICATION_CREDENTIALS=/path/to/your/service-account-key.json
-   ```
+1. Create a service account in GCP with the following roles:
+   - BigQuery Admin
+   - Storage Admin
+   - Storage Object Admin
 
-5. Initialize the project:
-   ```
-   make init
-   ```
+2. Download the service account key file and save it as `de-zoomcamp-project-XXXXX.json` in your project directory.
 
-6. Set up infrastructure:
-   ```
-   make tf-apply
-   ```
+3. Create a `.env` file in the kestra directory:
 
-7. Start Airflow locally:
-   ```
-   make airflow-up
-   ```
+```bash
+cd kestra
+cp .env.example .env
+```
 
-8. Access Airflow UI at http://localhost:8080 and trigger the DAG.
-
-## Development
-
-### Infrastructure
-
-Update Terraform configurations in the `terraform/` directory. Preview changes with:
+4. Edit the `.env` file to include your GCP configuration:
 
 ```
+GCP_PROJECT_ID=your-project-id
+GCP_DATASET=ais_data
+GCP_BUCKET_NAME=your-ais-data-bucket
+GCP_LOCATION=us-central1
+GCP_CREDS="{\"type\":\"service_account\",\"project_id\":\"your-project-id\",\"private_key_id\":\"...\",\"private_key\":\"...\",\"client_email\":\"...\",\"client_id\":\"...\",\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"token_uri\":\"https://oauth2.googleapis.com/token\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\",\"client_x509_cert_url\":\"...\",\"universe_domain\":\"googleapis.com\"}"
+```
+
+Note: For the `GCP_CREDS` variable, you'll need to format your service account JSON as a one-line string.
+
+### 3. Provision Infrastructure with Terraform
+
+```bash
+cd terraform
+cp terraform.tfvars.example terraform.tfvars
+```
+
+Edit `terraform.tfvars` with your GCP project details:
+
+```
+project_id     = "your-gcp-project-id"
+region         = "us-central1"
+zone           = "us-central1-a"
+bucket_name    = "your-ais-data-bucket"
+dataset_id     = "ais_data"
+dataset_location = "US"
+```
+
+Initialize and apply Terraform:
+
+```bash
+make tf-init
 make tf-plan
-```
-
-Apply changes with:
-
-```
 make tf-apply
 ```
 
-### Pipeline
+### 4. Start Kestra
 
-Modify the Airflow DAG in `airflow/dags/ais_ingestion_dag.py` to adjust the pipeline workflow.
-
-### Transformations
-
-Edit dbt models in the `dbt/models/` directory. Run transformations with:
-
-```
-make dbt-run
+```bash
+make kestra-up
 ```
 
-Run tests with:
+This will start Kestra locally at http://localhost:8080
 
+### 5. Import Kestra Flows
+
+```bash
+make import-flows
 ```
-make dbt-test
+
+This will upload the extraction/loading and transformation flows to Kestra.
+
+### 6. Start Metabase (Optional)
+
+```bash
+make metabase-up
 ```
 
-## Dashboard
+Access Metabase at http://localhost:3000 and follow the setup wizard.
 
-Access the Looker Studio dashboard at [dashboard-link] (to be added after creation).
+## Running the Pipeline
 
-## Implementation Plan
+### Manual Trigger
 
-This project follows a structured implementation approach:
+1. Open Kestra UI: http://localhost:8080
+2. Navigate to the "ais" namespace
+3. Select "ais_data_extraction_and_load" flow
+4. Click "Execute" and provide a date in the trigger parameters (YYYY-MM-DD format)
+5. After extraction completes, run the "ais_data_transformation" flow
 
-1. **Infrastructure Setup (Days 1-2)**
-   - Set up Terraform for GCS & BigQuery
-   - Provision required resources
+### Scheduled Runs
 
-2. **Airflow DAG (Days 3-4)**
-   - Implement ingestion steps (download, extract, load)
-   - Set up local environment
+The extraction flow is configured to run daily at 9 AM. You can modify the schedule in the flow YAML file.
 
-3. **dbt Implementation (Days 5-6)**
-   - Build staging & curated models
-   - Implement partitioning and tests
+## Dashboard Setup
 
-4. **Integration & Testing (Days 7-8)**
-   - Ensure end-to-end workflow
-   - Test with realistic data
+### Metabase Dashboard
 
-5. **Dashboard (Day 9)**
-   - Create Looker Studio visualizations
-   - Implement required tiles
+1. Start Metabase using: `make metabase-up`
+2. Access Metabase at http://localhost:3000
+3. Complete the initial setup
+4. Add BigQuery as a data source:
+   - Database type: BigQuery
+   - Upload your service account JSON file
+   - Select the datasets to sync
+5. Create dashboards following the example queries in `metabase/queries/`
 
-6. **Documentation (Day 10)**
-   - Finalize documentation
-   - Polish project structure
+For detailed instructions, see: `metabase/README.md`
 
-## License
+### Looker Studio Dashboard
 
-[Your License Information]
+1. Navigate to [Looker Studio](https://lookerstudio.google.com/)
+2. Create a new report
+3. Connect to BigQuery using the custom queries:
+   - For daily navigational status: Use the query from `metabase/queries/daily_navigational_status.sql`
+   - For monthly trends: Use the query from `metabase/queries/monthly_navigational_status.sql`
+4. Create visualizations:
+   - Pie chart for navigational status distribution
+   - Time series for monthly status trends
 
-## Acknowledgments
+For detailed instructions, see: `dashboard_implementation_guide.md`
 
-- [Data Engineering Zoomcamp](https://github.com/DataTalksClub/data-engineering-zoomcamp)
+## Makefile Commands
+
+- `make help`: Display available commands
+- `make tf-init`: Initialize Terraform
+- `make tf-plan`: Create Terraform execution plan
+- `make tf-apply`: Apply Terraform changes
+- `make kestra-up`: Start Kestra
+- `make kestra-down`: Stop Kestra
+- `make import-flows`: Import Kestra flows
+- `make metabase-up`: Start Metabase
+- `make metabase-down`: Stop Metabase
+- `make clean`: Clean up temporary files
+- `make all`: Set up the complete environment
+
+## Data Transformation
+
+The dbt models create a three-tier transformation layer:
+
+1. **Staging layer**: Initial data cleaning and type conversion
+   - Key model: `staging_ais_data.sql`
+
+2. **Intermediate layer**: Business logic, deduplication, and data quality
+   - Key model: `int_ais_data.sql`
+
+3. **Mart layer**: Analytics-ready views of the data
+   - Daily navigational status: For daily status distribution
+   - Monthly navigational status: For time-series analysis
+
+dbt models are automatically run through the Kestra transformation flow.
+
+## Project Components
+
+### ETL Process (Kestra)
+
+The ETL process consists of these key steps:
+1. Download AIS data ZIP files from source
+2. Extract CSV files from the ZIP archives
+3. Upload the CSV files to Google Cloud Storage
+4. Create and load data into BigQuery tables with appropriate partitioning
+5. Merge new data into the main AIS data table
+
+### Transformation (dbt)
+
+dbt models transform the raw AIS data into analytics-ready formats:
+1. Clean and standardize field formats
+2. Remove duplicate records
+3. Add data quality flags
+4. Aggregate data for dashboards:
+   - Daily distribution of navigational statuses
+   - Monthly trends of navigational statuses over time
+
+### Visualization
+
+The project supports two visualization options:
+
+**Metabase** (Self-hosted):
+- Pie chart for daily navigational status distribution
+- Time series for monthly navigational status trends
+- Interactive filtering by date periods
+
+**Looker Studio** (Cloud):
+- Similar visualizations using Google's cloud-based solution
+- Direct integration with BigQuery
+
+## Troubleshooting
+
+### Kestra Issues
+
+- Check Kestra logs: `docker logs kestra_kestra_1`
+- Verify environment variables in `.env` file
+- Ensure GCP credentials are correctly formatted
+
+### BigQuery Issues
+
+- Verify your service account has appropriate permissions
+- Check the GCP project and dataset names in your configuration
+- Validate SQL syntax in the flow files
+
+### dbt Issues
+
+- Check dbt logs in Kestra UI
+- Validate the dbt project structure and dependencies
+- Ensure service-account.json is correctly configured
+
+## References
+
+- [Kestra Documentation](https://kestra.io/docs/)
+- [dbt Documentation](https://docs.getdbt.com/)
+- [Metabase Documentation](https://www.metabase.com/docs/latest/)
+- [Looker Studio Documentation](https://support.google.com/looker-studio/)
+- [BigQuery Documentation](https://cloud.google.com/bigquery/docs)
+- [AIS Data Source](http://web.ais.dk/aisdata/)

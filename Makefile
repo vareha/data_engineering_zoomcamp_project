@@ -1,115 +1,127 @@
-# AIS Data Engineering Pipeline Makefile
-# This Makefile provides targets for common operations in the project
+# AIS Data Engineering Project Makefile
+# This Makefile automates common tasks for setting up and running the AIS data pipeline
 
-# Variables
-PROJECT_ID ?= your-gcp-project-id  # Set via command line or environment
-REGION ?= us-central1              # Default GCP region
-BUCKET_NAME ?= ais-data-lake       # GCS bucket name prefix
+# Environment variables (can be overridden)
+PROJECT_DIR := $(shell pwd)
+KESTRA_DIR := $(PROJECT_DIR)/kestra
+METABASE_DIR := $(PROJECT_DIR)/metabase
+TERRAFORM_DIR := $(PROJECT_DIR)/terraform
+DBT_DIR := $(PROJECT_DIR)/dbt
 
-.PHONY: all init tf-init tf-plan tf-apply airflow-up airflow-down kestra-up kestra-down dbt-run dbt-test pipeline clean
+# Default target
+.PHONY: help
+help:
+	@echo "AIS Data Engineering Project"
+	@echo ""
+	@echo "Available commands:"
+	@echo "  make help            - Show this help message"
+	@echo "  make all             - Set up the complete environment"
+	@echo "  make tf-init         - Initialize Terraform"
+	@echo "  make tf-plan         - Create a Terraform execution plan"
+	@echo "  make tf-apply        - Apply Terraform changes"
+	@echo "  make tf-destroy      - Destroy Terraform-managed infrastructure"
+	@echo "  make kestra-up       - Start Kestra"
+	@echo "  make kestra-down     - Stop Kestra"
+	@echo "  make import-flows    - Import Kestra flows"
+	@echo "  make metabase-up     - Start Metabase"
+	@echo "  make metabase-down   - Stop Metabase"
+	@echo "  make clean           - Clean up temporary files"
 
-# 'all' runs the entire pipeline end-to-end
-all: tf-apply airflow-up dbt-run
+# Full setup
+.PHONY: all
+all: tf-apply kestra-up import-flows metabase-up
+	@echo "✅ All components have been set up successfully!"
+	@echo "  - Kestra: http://localhost:8080"
+	@echo "  - Metabase: http://localhost:3000"
+	@echo ""
+	@echo "Next steps:"
+	@echo "1. Complete Metabase setup by following the setup wizard"
+	@echo "2. Configure BigQuery connection in Metabase"
+	@echo "3. Create dashboards following the implementation guides"
 
-# Initialize the project
-init:
-	@echo "Initializing project environment..."
-	@echo "Installing Python dependencies..."
-	pip install -r requirements.txt || (echo "No requirements.txt found, skipping"; exit 0)
-	@echo "Project initialized successfully"
-
-# Terraform targets
+# Terraform commands
+.PHONY: tf-init
 tf-init:
 	@echo "Initializing Terraform..."
-	cd terraform && terraform init
+	cd $(TERRAFORM_DIR) && terraform init
 
+.PHONY: tf-plan
 tf-plan: tf-init
 	@echo "Creating Terraform plan..."
-	cd terraform && terraform plan \
-		-var="project_id=$(PROJECT_ID)" \
-		-var="region=$(REGION)" \
-		-var="bucket_name=$(BUCKET_NAME)" \
-		-out=tfplan
+	cd $(TERRAFORM_DIR) && terraform plan -out=tfplan
 
+.PHONY: tf-apply
 tf-apply: tf-plan
 	@echo "Applying Terraform changes..."
-	cd terraform && terraform apply "tfplan"
-	@echo "Infrastructure provisioned successfully"
+	cd $(TERRAFORM_DIR) && terraform apply "tfplan"
+	@echo "✅ Infrastructure provisioned successfully"
 
-# Airflow targets
-airflow-up:
-	@echo "Starting Airflow with Docker Compose..."
-	cd airflow && docker-compose up -d
-	@echo "Airflow is starting up... Please wait ~1 minute for services to be ready"
-	@echo "Access the Airflow UI at http://localhost:8080"
+.PHONY: tf-destroy
+tf-destroy:
+	@echo "⚠️ WARNING: This will destroy all resources managed by Terraform ⚠️"
+	@echo "Are you sure you want to continue? (y/N)"
+	@read -p "" CONFIRM; \
+	if [ "$$CONFIRM" = "y" ]; then \
+		cd $(TERRAFORM_DIR) && terraform destroy; \
+		echo "✅ Infrastructure destroyed successfully"; \
+	else \
+		echo "Operation cancelled"; \
+	fi
 
-airflow-down:
-	@echo "Stopping Airflow containers..."
-	cd airflow && docker-compose down
-	@echo "Airflow has been stopped"
-
-# Kestra targets
+# Kestra commands
+.PHONY: kestra-up
 kestra-up:
-	@echo "Starting Kestra with Docker Compose..."
-	cd kestra && docker-compose up -d
-	@echo "Kestra is starting up... Please wait ~1 minute for services to be ready"
-	@echo "Access the Kestra UI at http://localhost:8080"
+	@echo "Starting Kestra..."
+	cd $(KESTRA_DIR) && docker-compose up -d
+	@echo "✅ Kestra is running at http://localhost:8080"
 
+.PHONY: kestra-down
 kestra-down:
-	@echo "Stopping Kestra containers..."
-	cd kestra && docker-compose down
-	@echo "Kestra has been stopped"
+	@echo "Stopping Kestra..."
+	cd $(KESTRA_DIR) && docker-compose down
+	@echo "✅ Kestra stopped"
 
-# dbt targets
+.PHONY: import-flows
+import-flows:
+	@echo "Importing Kestra flows..."
+	@echo "Waiting for Kestra to be ready..."
+	@sleep 10
+	curl -X POST http://localhost:8080/api/v1/flows/import -F fileUpload=@$(KESTRA_DIR)/flows/ais_data_extraction_and_load.yaml
+	curl -X POST http://localhost:8080/api/v1/flows/import -F fileUpload=@$(KESTRA_DIR)/flows/ais_data_transformation.yaml
+	@echo "✅ Kestra flows imported successfully"
+
+# Metabase commands
+.PHONY: metabase-up
+metabase-up:
+	@echo "Starting Metabase..."
+	cd $(METABASE_DIR) && docker-compose up -d
+	@echo "✅ Metabase is running at http://localhost:3000"
+	@echo "⚠️ Note: First startup may take a few minutes while Metabase initializes"
+
+.PHONY: metabase-down
+metabase-down:
+	@echo "Stopping Metabase..."
+	cd $(METABASE_DIR) && docker-compose down
+	@echo "✅ Metabase stopped"
+
+# Utility commands
+.PHONY: clean
+clean:
+	@echo "Cleaning up temporary files..."
+	find . -name "*.pyc" -delete
+	find . -name "__pycache__" -delete
+	rm -f $(TERRAFORM_DIR)/tfplan
+	@echo "✅ Cleanup complete"
+
+# Run dbt models manually (use only for development, Kestra handles this in production)
+.PHONY: dbt-run
 dbt-run:
 	@echo "Running dbt models..."
-	cd dbt && dbt run --profiles-dir . --target prod
+	cd $(DBT_DIR)/ais_data_project && dbt run
+	@echo "✅ dbt models executed"
 
+.PHONY: dbt-test
 dbt-test:
-	@echo "Running dbt tests..."
-	cd dbt && dbt test --profiles-dir . --target prod
-
-# Run the complete pipeline (may require manual Airflow DAG trigger)
-pipeline: tf-apply airflow-up
-	@echo "Infrastructure and Airflow are ready"
-	@echo "Please trigger the 'ais_ingestion_dag' in the Airflow UI at http://localhost:8080"
-	@echo "After the DAG completes, run 'make dbt-run' to apply transformations"
-
-# Run the pipeline with Kestra
-kestra-pipeline: tf-apply kestra-up
-	@echo "Infrastructure and Kestra are ready"
-	@echo "Please trigger the 'ais_ingestion_flow' in the Kestra UI at http://localhost:8080"
-	@echo "After the flow completes, run 'make dbt-run' to apply transformations"
-
-# Clean up local environment (does not affect cloud resources)
-clean:
-	@echo "Cleaning up local environment..."
-	cd airflow && docker-compose down -v || true
-	cd kestra && docker-compose down -v || true
-	rm -rf terraform/.terraform terraform/tfplan || true
-	@echo "Local environment cleaned"
-
-# Helper message
-help:
-	@echo "AIS Data Engineering Pipeline Makefile"
-	@echo "-------------------------------------"
-	@echo "Available targets:"
-	@echo "  init            Initialize the project"
-	@echo "  tf-init         Initialize Terraform"
-	@echo "  tf-plan         Create Terraform execution plan"
-	@echo "  tf-apply        Apply Terraform changes"
-	@echo "  airflow-up      Start Airflow with Docker Compose"
-	@echo "  airflow-down    Stop Airflow containers"
-	@echo "  kestra-up       Start Kestra with Docker Compose"
-	@echo "  kestra-down     Stop Kestra containers"
-	@echo "  dbt-run         Run dbt models"
-	@echo "  dbt-test        Run dbt tests"
-	@echo "  pipeline        Run the complete pipeline with Airflow"
-	@echo "  kestra-pipeline Run the complete pipeline with Kestra"
-	@echo "  clean           Clean up local environment"
-	@echo "  help            Display this help message"
-	@echo ""
-	@echo "Usage example:"
-	@echo "  make tf-apply PROJECT_ID=my-gcp-project REGION=us-east1"
-	@echo "  make airflow-up"
-	@echo "  make dbt-run"
+	@echo "Testing dbt models..."
+	cd $(DBT_DIR)/ais_data_project && dbt test
+	@echo "✅ dbt tests completed"

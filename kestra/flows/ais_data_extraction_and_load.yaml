@@ -1,4 +1,4 @@
-id: ais_data
+id: ais_data_extraction_and_load
 namespace: ais
 description: |
   AIS Data Ingestion Flow
@@ -238,4 +238,4 @@ pluginDefaults:
 triggers:
   - id: schedule
     type: io.kestra.plugin.core.trigger.Schedule
-    cron: "0 9 1 * *"
+    cron: "0 9 * * *"

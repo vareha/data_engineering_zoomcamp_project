@@ -1,311 +1,255 @@
 # Metabase Dashboard Implementation Guide
 
 ## Introduction
-This guide provides detailed instructions for implementing self-hosted Metabase dashboards based on the dbt mart models we've created for AIS data analysis. We'll set up Metabase using Docker and create two main visualizations:
+This guide provides detailed instructions for implementing Metabase dashboards based on the dbt mart models we've created for AIS data analysis. We'll create two main visualizations:
 1. A pie chart showing daily navigational status distribution
 2. A time series visualization showing monthly navigational status trends over time
 
 ## Prerequisites
-- Docker and Docker Compose installed on the host system
-- Access to BigQuery project (`de-zoomcamp-project-455806`)
+- Docker and Docker Compose installed
+- Access to Google Cloud Console and the BigQuery project
 - The dbt models have been successfully run and data is available in BigQuery
-- A service account key file with BigQuery access permissions
+- Service account JSON file with BigQuery access permissions
+- Metabase running locally (can be started with `make metabase-up`)
 
-## Step 1: Set Up Self-Hosted Metabase with Docker
+## Step 1: Access Metabase
 
-1. Create a directory for Metabase configuration:
-```bash
-mkdir -p metabase/data
-```
-
-2. Create a Docker Compose file for Metabase:
-```bash
-touch metabase/docker-compose.yml
-```
-
-3. Add the following configuration to the Docker Compose file:
-```yaml
-version: '3'
-services:
-  metabase:
-    image: metabase/metabase:latest
-    container_name: metabase
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./data:/metabase-data
-    environment:
-      - MB_DB_FILE=/metabase-data/metabase.db
-      - JAVA_TIMEZONE=Europe/Lisbon
-    restart: unless-stopped
-```
-
-4. Start Metabase:
-```bash
-cd metabase
-docker-compose up -d
-```
-
-5. Access Metabase setup:
-   - Open your browser and navigate to http://localhost:3000
-   - Follow the initial setup wizard:
-     - Create an admin account
-     - Set basic preferences
-
-## Step 2: Connect Metabase to BigQuery
-
-1. From the Metabase admin interface, navigate to Admin > Databases > Add database
-
-2. Select "Google BigQuery" as the database type
-
-3. Configure the connection:
-   - **Name**: AIS Data Warehouse
-   - **Dataset ID**: Specify your BigQuery dataset ID (e.g., `marts`)
-   - **Service Account JSON**: Copy the contents of your service account key file
-   - **Project ID**: `de-zoomcamp-project-455806`
-
-4. Under "Advanced options":
-   - Enable "Use data warehouse local timezone"
-   - Set an appropriate sync frequency (e.g., 6 hours)
-   - Enable "Refingerprint and scan on schedule"
-   - Leave other settings as default
-
-5. Click "Save" to complete the connection
-
-6. Metabase will begin scanning the database and synchronizing metadata
-
-## Step 3: Verify Data Access
-
-1. Once synchronization is complete, go to "Browse Data"
-2. You should see your BigQuery dataset and dbt-created tables:
-   - `daily_navigational_status`
-   - `monthly_navigational_status`
-3. Explore the tables to verify data access:
-   - Click on each table
-   - Review sample data and field types
-   - Ensure date/timestamp fields are properly recognized
-
-## Step 4: Create a New Dashboard
-
-1. Click on "Dashboards" in the top navigation
-2. Click "Create a dashboard"
-3. Name it "AIS Navigational Status Analysis"
-4. Add a description: "Analysis of ship navigational status from AIS data"
-5. Click "Create"
-
-## Step 5: Create Daily Navigational Status Pie Chart
-
-1. In your dashboard, click "Add a question"
-2. Select "Custom question"
-3. Configure data source:
-   - Select your database and the `daily_navigational_status` table
-4. Set up the query:
-   - Under "Summarize", select "Group by" > "navigational_status"
-   - Select "Sum of" > "percentage" for the metric
-5. Click "Visualize" and change the visualization type to "Pie chart"
-6. Configure visualization settings:
-   - Title: "Daily Navigational Status Distribution"
-   - Labels: Show values and percentages
-   - Colors: Select a diverse color palette for different statuses
-7. Add filter:
-   - Click "Filter" button
-   - Add "Date" filter type
-   - Set default to "Last 30 days" or appropriate timeframe
-8. Save the question with a descriptive name (e.g., "Daily Nav Status Distribution")
-9. Add to dashboard
-
-## Step 6: Create Monthly Navigational Status Time Series
-
-1. Click "Add a question" in your dashboard
-2. Select "Custom question"
-3. Configure data source:
-   - Select your database and the `monthly_navigational_status` table
-4. Set up the query:
-   - Under "Pick the metric you want to see", select "Sum of" > "percentage"
-   - Under "Pick a column to group by", select "month_start_date"
-   - Add a second grouping by "navigational_status"
-5. Click "Visualize" and select "Stacked area chart" or "Stacked bar chart"
-6. Configure visualization settings:
-   - Title: "Monthly Navigational Status Trends"
-   - X-axis: month_start_date (ensure it's set to time series)
-   - Y-axis: Format as percentage
-   - Series: Group by navigational_status
-   - Colors: Use the same color palette as the pie chart
-7. Add filter:
-   - Add date range filter for month_start_date
-   - Set default to last 12 months or appropriate timeframe
-8. Save the question with a descriptive name (e.g., "Monthly Nav Status Trends")
-9. Add to dashboard
-
-## Step 7: Add Text Cards with Context
-
-1. In the dashboard, click "Add a card" and select "Text"
-2. Add a title card with dashboard explanation:
-```
-# AIS Navigational Status Analysis
-
-This dashboard presents analysis of ship navigational status data from Automatic Identification System (AIS) transmissions.
-
-The pie chart shows the distribution of different navigational statuses for a specific day.
-The time series chart shows how this distribution changes over months.
-```
-
-3. Add another text card with status code explanations:
-```
-## Navigational Status Codes
-
-- 0: Under way using engine
-- 1: At anchor
-- 2: Not under command
-- 3: Restricted maneuverability
-- 4: Constrained by draft
-- 5: Moored
-- 6: Aground
-- 7: Engaged in fishing
-- 8: Under way sailing
-```
-
-## Step 8: Add Summary Metrics
-
-1. Create number cards for key metrics:
-   - Total records across all statuses
-   - Most common navigational status
-   - Percentage of records with valid MMSI
-2. For each metric:
-   - Create a new question with the appropriate SQL aggregation
-   - Set visualization to "Number"
-   - Configure formatting (e.g., show as percentage, appropriate decimals)
-   - Add to dashboard
-3. Arrange metrics in a row at the top of the dashboard
-
-## Step 9: Configure Dashboard Filters
-
-1. In the dashboard edit mode, click "Add a filter"
-2. Create a date filter:
-   - Name: "Date Range"
-   - Type: "Date"
-   - Default value: Last 30 days
-3. Wire this filter to both visualizations:
-   - Connect to the date field in the daily status visualization
-   - Connect to the month_start_date in the monthly status visualization
-4. Add a navigational status filter:
-   - Name: "Navigational Status"
-   - Type: "Category"
-   - Default: All values
-5. Wire this filter to both visualizations
-
-## Step 10: Arrange Dashboard Layout
-
-1. Resize and arrange cards in a logical order:
-   - Text explanation at the top
-   - Summary metrics in a row
-   - Daily and monthly visualizations side by side or stacked
-   - Status code explanation at the bottom
-2. Use the drag-and-drop interface to position elements
-3. Save the dashboard layout
-
-## Step 11: Set Up Refresh Schedule
-
-1. Go to Admin > Tools > Task History
-2. Ensure the data sync task is running properly
-3. Adjust sync schedule if needed (Admin > Databases > your database)
-4. Consider enabling "Cache query results" for better performance
-
-## Step 12: Share and Access Control
-
-1. Click on "Sharing and embedding" in the dashboard
-2. Select appropriate sharing options:
-   - Public link (if needed)
-   - Specific Metabase users/groups
-3. Configure permissions in Admin > Permissions:
-   - Set up user groups if needed
-   - Grant appropriate access to dashboards and underlying data
-
-## Step 13: Create a Dashboard Collection
-
-1. Go to Collections in the top navigation
-2. Create a new collection called "AIS Data Analysis"
-3. Move your dashboard to this collection
-4. Set appropriate collection permissions
-
-## Technical Implementation Details
-
-### BigQuery SQL for Daily Visualization
-
-```sql
-SELECT
-  date,
-  navigational_status,
-  record_count,
-  total_daily_records,
-  percentage
-FROM
-  `de-zoomcamp-project-455806.marts.daily_navigational_status`
-```
-
-### BigQuery SQL for Monthly Visualization
-
-```sql
-SELECT
-  month_start_date,
-  year,
-  month,
-  navigational_status,
-  record_count,
-  total_monthly_records,
-  percentage
-FROM
-  `de-zoomcamp-project-455806.marts.monthly_navigational_status`
-ORDER BY
-  month_start_date, navigational_status
-```
-
-## Testing and Validation
-
-Before finalizing the dashboard:
-
-1. Test all filters to ensure they work as expected
-2. Verify that data matches expected values from BigQuery
-3. Check performance with different date ranges
-4. Test from different browsers and devices
-5. Get feedback from potential users
-
-## Maintenance
-
-1. Monitor Metabase logs for any issues:
-   ```bash
-   docker logs metabase
+1. Start Metabase using the provided command:
+   ```
+   make metabase-up
    ```
 
-2. Update Metabase when new versions are available:
-   ```bash
-   cd metabase
-   docker-compose pull
-   docker-compose up -d
+2. Open your web browser and navigate to [http://localhost:3000](http://localhost:3000)
+
+3. Complete the initial setup when accessing Metabase for the first time:
+   - Create an admin account with your email and password
+   - Add your organization name
+   - Choose data collection preferences
+
+## Step 2: Connect to BigQuery Data Source
+
+1. In Metabase, navigate to the Admin settings (gear icon in the top right)
+2. Select "Databases" from the admin panel
+3. Click "Add database"
+4. Configure BigQuery connection:
+   - Display name: "AIS Data BigQuery"
+   - Database type: Google BigQuery
+   - Dataset ID: Your BigQuery dataset (e.g., "ais_data" or "marts")
+   - Service account JSON: Upload or paste your service account JSON content
+   - Advanced options:
+     - Set "Use JSON Query" to "Yes"
+     - Ensure "Include User ID and Query Hash in queries" is set to "No" (for better query cache performance)
+5. Click "Save" and wait for Metabase to sync with your BigQuery database
+6. Once connected, you can go to "Browse Data" to see your tables
+
+## Step 3: Create Daily Navigational Status Pie Chart
+
+1. From the Metabase homepage, click "New" and select "Question"
+2. Choose your BigQuery database and select the "daily_navigational_status" table
+3. Click the "Visualization" button at the bottom
+4. Choose "Pie chart" as the visualization type
+5. Configure the pie chart:
+   - "Group by": navigational_status
+   - "Summarize": percentage or record_count
+6. Apply filters if needed:
+   - Add a filter on "date" to select a specific date range
+7. Customize the appearance:
+   - Click the "Settings" gear icon
+   - Set an appropriate title: "Daily Navigational Status Distribution"
+   - Adjust colors, labels, and legend settings
+8. Click "Save" and name your question "Daily Navigational Status Distribution"
+
+## Step 4: Create Monthly Navigational Status Time Series
+
+1. From the Metabase homepage, click "New" and select "Question"
+2. Choose your BigQuery database and select the "monthly_navigational_status" table
+3. Click the "Visualization" button
+4. Choose "Line chart" or "Bar chart" as the visualization type
+5. Configure the chart:
+   - "X-axis": month_start_date
+   - "Y-axis": percentage or record_count
+   - "Group by": navigational_status
+6. Apply filters if needed:
+   - Add a filter on "month_start_date" to select a specific period
+7. Customize the appearance:
+   - Click the "Settings" gear icon
+   - Set an appropriate title: "Monthly Navigational Status Trends"
+   - Adjust colors, axes, and legend settings
+8. Click "Save" and name your question "Monthly Navigational Status Trends"
+
+## Step 5: Create a Dashboard
+
+1. From the Metabase homepage, click "New" and select "Dashboard"
+2. Name your dashboard "AIS Navigational Status Analysis"
+3. Add the questions you created:
+   - Click "Add a question"
+   - Select "Daily Navigational Status Distribution"
+   - Click "Add question"
+   - Repeat for "Monthly Navigational Status Trends"
+4. Resize and arrange the visualizations as needed
+5. Add a text card to provide context:
+   - Click "Add a text card"
+   - Add a description like:
+   ```
+   # AIS Navigational Status Analysis
+
+   This dashboard presents analysis of ship navigational status data from Automatic Identification System (AIS) transmissions.
+
+   - The pie chart shows the distribution of different navigational statuses for a specific day.
+   - The time series chart shows how this distribution changes over months.
+
+   Common navigational statuses include:
+   - Under way using engine (0)
+   - At anchor (1)
+   - Not under command (2)
+   - Restricted maneuverability (3)
+   - Constrained by draft (4)
+   - Moored (5)
+   - Aground (6)
+   - Engaged in fishing (7)
+   - Under way sailing (8)
+   ```
+6. Click "Save"
+
+## Step 6: Add Interactive Filters
+
+1. From your dashboard, click the "Pencil" icon to enter edit mode
+2. Click "Add a filter" at the top right
+3. Select "Time" filter type
+4. Map the filter to the date/timestamp fields in your questions:
+   - For "Daily Navigational Status Distribution", map to the "date" field
+   - For "Monthly Navigational Status Trends", map to the "month_start_date" field
+5. Click "Done"
+6. Add another filter for "Category":
+   - Select "Category" filter type
+   - Map it to the "navigational_status" field in both questions
+7. Save your dashboard
+
+## Step 7: Add Summary Metrics using SQL Questions
+
+1. From the Metabase homepage, click "New" and select "Question"
+2. Choose "Native query" (SQL) as the input method
+3. Create a SQL query for total counts:
+   ```sql
+   SELECT
+     SUM(record_count) as total_records,
+     COUNT(DISTINCT date) as days_with_data,
+     -- Most common status by percentage
+     ARRAY_AGG(navigational_status ORDER BY percentage DESC LIMIT 1)[OFFSET(0)] as most_common_status
+   FROM
+     `your-project-id.marts.daily_navigational_status`
+   ```
+4. Run the query and select "Scalar" visualization for each metric
+5. Save this question as "AIS Summary Metrics"
+6. Add these metrics to your dashboard:
+   - Edit the dashboard
+   - Add the "AIS Summary Metrics" question
+   - Choose "Just the number" visualization for each summary value
+
+## Step 8: Optimize Performance
+
+1. Navigate to Admin > Settings > Performance
+2. Adjust cache settings:
+   - Set question caching to an appropriate duration (e.g., 24 hours)
+   - Enable dashboard caching
+3. Return to your dashboard and click the clock icon to set a dashboard refresh schedule:
+   - Set to refresh daily or at an appropriate frequency
+4. Consider adding materialized views in BigQuery for frequently queried data
+
+## Step 9: Share the Dashboard
+
+1. Click the "Share" button on your dashboard
+2. You can:
+   - Copy a public link (if you've enabled public sharing in Admin settings)
+   - Add specific Metabase users who should have access
+   - Schedule regular email updates to stakeholders
+   - Export the dashboard as PDF/PNG for sharing
+
+## Advanced Customization
+
+### Using Custom SQL
+
+For more advanced visualizations, you can use custom SQL instead of the table interface:
+
+1. Create a new question with "Native query" (SQL)
+2. Use SQL like this for the daily distribution:
+   ```sql
+   SELECT
+     date,
+     navigational_status,
+     percentage
+   FROM
+     `your-project-id.marts.daily_navigational_status`
+   WHERE
+     date BETWEEN DATETIME_SUB(CURRENT_DATE(), INTERVAL 30 DAY) AND CURRENT_DATE()
+   ORDER BY
+     date, percentage DESC
+   ```
+3. For monthly trends, use:
+   ```sql
+   SELECT
+     month_start_date,
+     navigational_status,
+     percentage
+   FROM
+     `your-project-id.marts.monthly_navigational_status`
+   ORDER BY
+     month_start_date, navigational_status
    ```
 
-3. Back up Metabase data periodically:
-   ```bash
-   cp -r metabase/data /backup/metabase_data_$(date +%Y%m%d)
-   ```
+### Creating a Map Visualization
+
+If your AIS data contains geographical information, you can create a map visualization:
+
+1. Create a new question selecting the staging_ais_data table
+2. Filter to a specific date range to limit the number of points
+3. Choose "Map" visualization
+4. Set "Latitude" and "Longitude" as the location fields
+5. Use "navigational_status" as a color dimension
+6. Save and add to your dashboard
 
 ## Troubleshooting
 
-### Connection Issues
-- Verify service account has proper BigQuery permissions
-- Check network connectivity between Metabase container and GCP
-- Review Metabase logs for connection errors
+### BigQuery Connection Issues
 
-### Performance Issues
-- Consider materializing complex queries as views
-- Adjust caching settings in Metabase
-- Verify BigQuery partition pruning is working correctly
+If you encounter connection issues:
+1. Verify your service account has the correct permissions:
+   - BigQuery Data Viewer (roles/bigquery.dataViewer)
+   - BigQuery Job User (roles/bigquery.jobUser)
+2. Check that your service account JSON is formatted correctly
+3. Ensure your project ID and dataset names are correct
+4. Try refreshing the Metabase metadata:
+   - Admin > Databases > Your database > Sync database schema now
 
-### Visualization Issues
-- For date formatting issues, verify timezone settings
-- For data discrepancies, compare raw BigQuery results with Metabase
-- For rendering problems, try alternative chart types
+### Visualization Problems
+
+1. For charts not displaying correctly:
+   - Check your data for unexpected NULL values
+   - Verify date/timestamp formatting is consistent
+   - Ensure your aggregations make sense (e.g., summing percentages might not be valid)
+2. For slow-loading visualizations:
+   - Consider adding filters to limit data volume
+   - Check if your dbt models are optimized with appropriate partitioning
+   - Consider creating materialized views for complex calculations
+
+### Missing Data
+
+If data is missing in your visualizations:
+1. Verify the dbt models ran successfully
+2. Check if the date ranges in your filters exclude relevant data
+3. Ensure the query is not hitting BigQuery data staleness issues
+4. Refresh the Metabase data model:
+   - Admin > Databases > Your database > Sync database schema now
+
+## Maintenance
+
+To keep your dashboard updated and performing well:
+
+1. Schedule regular data refresh times
+2. Monitor query performance in BigQuery's audit logs 
+3. Update dashboard filters as new data arrives
+4. Consider archiving or partitioning older data if performance degrades
 
 ---
 
-This implementation guide provides a comprehensive approach to setting up self-hosted Metabase dashboards for AIS data analysis. The resulting dashboards will enable users to explore navigational status patterns both daily (via pie chart) and over time (via time series), providing valuable insights into maritime traffic behavior.
+This implementation guide provides a comprehensive approach to creating effective Metabase dashboards for AIS data analysis. The resulting dashboards will enable users to explore navigational status patterns both daily (via pie chart) and over time (via time series), providing valuable insights into maritime traffic behavior.

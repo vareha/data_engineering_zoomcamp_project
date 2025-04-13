@@ -38,3 +38,9 @@ kestra:
       bucket-name: ${GCS_BUCKET_NAME}
       staging-dataset: ${BQ_STAGING_DATASET}
       raw-table-name: stg_ais_raw
+      
+  plugins:
+    configurations:
+      - type: io.kestra.plugin.scripts.runner.docker.Docker
+        values:
+          volumeEnabled: true    

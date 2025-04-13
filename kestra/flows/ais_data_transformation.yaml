@@ -1,0 +1,54 @@
+id: ais_data_transformation
+namespace: ais
+description: |
+  Runs dbt models to transform AIS data in BigQuery
+
+inputs:
+  - id: dbt_command
+    type: SELECT
+    allowCustomValue: true
+    defaults: dbt build
+    values:
+      - dbt build
+      - dbt debug
+
+tasks:
+  - id: dbt
+    type: io.kestra.plugin.core.flow.WorkingDirectory
+    tasks:
+    - id: clone
+      type: io.kestra.plugin.git.Clone
+      url: https://github.com/vareha/data_engineering_zoomcamp_project
+      branch: main
+      directory: dbt
+    - id: dbt-build
+      type: io.kestra.plugin.dbt.cli.DbtCLI
+      env:
+        DBT_DATABASE: "{{kv('GCP_PROJECT_ID')}}"
+        DBT_SCHEMA: "{{kv('GCP_DATASET')}}"
+      containerImage: ghcr.io/kestra-io/dbt-bigquery:latest
+      taskRunner:
+        type: io.kestra.plugin.scripts.runner.docker.Docker
+      inputFiles:
+        service-account.json: "{{kv('GCP_CREDS')}}"
+      projectDir: dbt
+      commands:
+        - cp service-account.json dbt/
+        - cd dbt/dbt/ais_data_project
+        - dbt deps
+        - "{{ inputs.dbt_command }}"
+      storeManifest:
+        key: manifest.json
+        namespace: "{{ flow.namespace }}"
+      profiles: |
+        ais_data_project:
+          outputs:
+            bigquery:
+              type: bigquery
+              dataset: "{{kv('GCP_DATASET')}}"
+              project: "{{kv('GCP_PROJECT_ID')}}"
+              location: "{{kv('GCP_LOCATION')}}"
+              keyfile: service-account.json
+              method: service-account
+              threads: 4
+          target: bigquery
